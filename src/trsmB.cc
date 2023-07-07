@@ -57,10 +57,10 @@ void trsmB(
     // set min number for omp nested active parallel regions
     slate::OmpSetMaxActiveLevels set_active_levels( MinOmpActiveLevels );
 
-    #pragma omp parallel
+    #pragma omp parallel shared(A, B)
     #pragma omp master
     {
-        #pragma omp task
+        #pragma omp task shared(A, B)
         {
             work::trsm<target, scalar_t>( side, alpha, A, B, row, opts );
             B.tileUpdateAllOrigin();

@@ -567,7 +567,7 @@ if (HIP_FOUND)
                 COMMAND pwd
                 COMMAND hipcc ${Ddefs_} ${inc_}
                         "-I${CMAKE_SOURCE_DIR}/include"
-                        -fPIC -c -o ${obj_hip} ${src_hip}
+                        -ggdb --offload-arch=gfx90a -fPIC -c -o ${obj_hip} ${src_hip}
             )
 
             # Add the .o as a 'source' (even though it is already compiled)

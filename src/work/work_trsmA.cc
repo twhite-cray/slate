@@ -111,7 +111,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // Forward sweep
         for (int64_t k = 0; k < mt; ++k) {
             // panel (Akk tile)
-            #pragma omp task depend(inout:row[k]) priority(1)
+            #pragma omp task depend(inout:row[k]) priority(1) shared(A, B)
             {
                 // Scale the RHS in order to be consistent with the upper case
                 // XXX This inserts all tiles on the device...
@@ -248,7 +248,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             // lookahead update, B(k+1:k+la, :) -= A(k+1:k+la, k) B(k, :)
             for (int64_t i = k+1; i < k+1+lookahead && i < mt; ++i) {
                 #pragma omp task depend(in:row[k]) \
-                                 depend(inout:row[i]) priority(1)
+                                 depend(inout:row[i]) priority(1) shared(A, B)
                 {
 
                     int queue_ik1 = i - k + 1;
@@ -270,7 +270,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             if (k+1+lookahead < mt) {
                 #pragma omp task depend(in:row[k]) \
                                  depend(inout:row[k+1+lookahead]) \
-                                 depend(inout:row[mt-1])
+                                 depend(inout:row[mt-1]) shared(A, B)
                 {
                     for (int64_t j = 0; j < nt; ++j) {
                         internal::gemmA<target>(
@@ -283,7 +283,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             }
 
             // Erase remote or workspace tiles.
-            #pragma omp task depend(inout:row[k])
+            #pragma omp task depend(inout:row[k]) shared(A, B)
             {
                 auto A_col_k = A.sub( k, mt-1, k, k );
                 A_col_k.releaseRemoteWorkspace();
@@ -307,7 +307,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         for (int64_t k = mt-1; k >= 0; --k) {
 
             // panel (Akk tile)
-            #pragma omp task depend(inout:row[k]) priority(1)
+            #pragma omp task depend(inout:row[k]) priority(1) shared(A, B)
             {
                 // Scale the RHS to handle the alpha issue since B is moved
                 // around instead of the A as in trsm
@@ -431,7 +431,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             // lookahead update, B(k-la:k-1, :) -= A(k-la:k-1, k) B(k, :)
             for (int64_t i = k-1; i > k-1-lookahead && i >= 0; --i) {
                 #pragma omp task depend(in:row[k]) \
-                                 depend(inout:row[i]) priority(1)
+                                 depend(inout:row[i]) priority(1) shared(A, B)
                 {
                     int queue_k1lai = k - 1 + lookahead - i;
                     for (int j = 0; j < nt; ++j) {
@@ -452,7 +452,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             if (k-1-lookahead >= 0) {
                 #pragma omp task depend(in:row[k]) \
                                  depend(inout:row[k-1-lookahead]) \
-                                 depend(inout:row[0])
+                                 depend(inout:row[0]) shared(A, B)
                 {
                     for (int64_t j = 0; j < nt; ++j) {
                         internal::gemmA<target>(
@@ -465,7 +465,7 @@ void trsmA(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             }
 
             // Erase remote or workspace tiles.
-            #pragma omp task depend(inout:row[k])
+            #pragma omp task depend(inout:row[k]) shared(A, B)
             {
                 auto A_col_k = A.sub( 0, k, k, k );
                 A_col_k.releaseRemoteWorkspace();

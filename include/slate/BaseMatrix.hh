@@ -807,7 +807,7 @@ BaseMatrix<scalar_t>::BaseMatrix(
       uplo_(Uplo::General),
       op_(Op::NoTrans),
       layout_(Layout::ColMajor),
-      storage_(std::make_shared< MatrixStorage< scalar_t > >(
+      storage_(new MatrixStorage< scalar_t >(
           inTileMb, inTileNb, inTileRank, inTileDevice, mpi_comm)),
       mpi_comm_(mpi_comm)
 {
@@ -893,7 +893,7 @@ BaseMatrix<scalar_t>::BaseMatrix(
       uplo_(Uplo::General),
       op_(Op::NoTrans),
       layout_(Layout::ColMajor),
-      storage_(std::make_shared< MatrixStorage< scalar_t > >(
+      storage_(new MatrixStorage< scalar_t >(
           m, n, mb, nb, order, nprow, npcol, mpi_comm)),
       mpi_comm_(mpi_comm)
 {

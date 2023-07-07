@@ -105,7 +105,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // Forward sweep
 
         // send 1st block col of A and block row of B
-        #pragma omp task depend(out:bcast[0]) priority(1)
+        #pragma omp task depend(out:bcast[0]) priority(1) shared(A, B)
         {
             // broadcast A(i, 0) to ranks owning block row B(i, :),
             // for i = 0
@@ -122,7 +122,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // send next lookahead block cols of A and block rows of B
         for (int64_t k = 1; k < lookahead+1 && k < mt; ++k) {
             #pragma omp task depend(in:bcast[k-1]) \
-                             depend(out:bcast[k]) priority(1)
+                             depend(out:bcast[k]) priority(1) shared(A, B)
             {
                 // broadcast A(i, k) to ranks owning block row B(i, :)
                 BcastList bcast_list_A;
@@ -141,7 +141,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // multiply alpha A(:, 0) B(0, :), which is:
         // B(0, :) = alpha [ A(0, 0) B(0, :) ]  trmm
         #pragma omp task depend(in:bcast[0]) \
-                         depend(out:gemm[0]) priority(1)
+                         depend(out:gemm[0]) priority(1) shared(A, B)
         {
             internal::trmm<target>(
                 Side::Left,
@@ -154,7 +154,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             if (k+lookahead < mt) {
                 #pragma omp task depend(in:gemm[k-1]) \
                                  depend(in:bcast[k+lookahead-1]) \
-                                 depend(out:bcast[k+lookahead])
+                                 depend(out:bcast[k+lookahead]) shared(A, B)
                 {
                     // broadcast A(i, k+la) to ranks owning
                     // block row B(i, :)
@@ -182,7 +182,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             // B(k, :)      = alpha [ A(k, k)     B(k, :) ]  trmm
             #pragma omp task depend(in:bcast[k]) \
                              depend(in:gemm[k-1]) \
-                             depend(out:gemm[k])
+                             depend(out:gemm[k]) shared(A, B)
             {
                 internal::gemm<target>(
                     alpha, A.sub(0, k-1, k, k),
@@ -204,7 +204,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // Backward sweep
 
         // send 1st block col of A and block row of B
-        #pragma omp task depend(out:bcast[mt-1]) priority(1)
+        #pragma omp task depend(out:bcast[mt-1]) priority(1) shared(A, B)
         {
             // broadcast A(i, 0) to ranks owning block row B(i, :),
             // for i = m-1
@@ -224,7 +224,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // send next lookahead block cols of A and block rows of B
         for (int64_t k = mt-2; k >= mt-1-lookahead && k >= 0; --k) {
             #pragma omp task depend(in:bcast[k+1]) \
-                             depend(out:bcast[k]) priority(1)
+                             depend(out:bcast[k]) priority(1) shared(A, B)
             {
                 // broadcast A(i, k) to ranks owning block row B(i, :)
                 BcastList bcast_list_A;
@@ -243,7 +243,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
         // multiply B = alpha A(:, mt-1) B(mt-1, :), which is:
         // B(mt-1, :) = alpha [ A(mt-1, mt-1) B(mt-1, :) ]  trmm
         #pragma omp task depend(in:bcast[mt-1]) \
-                         depend(out:gemm[mt-1]) priority(1)
+                         depend(out:gemm[mt-1]) priority(1) shared(A, B)
         {
             internal::trmm<target>(
                 Side::Left,
@@ -257,7 +257,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             if (k-lookahead >= 0) {
                 #pragma omp task depend(in:gemm[k+1]) \
                                  depend(in:bcast[k-lookahead+1]) \
-                                 depend(out:bcast[k-lookahead])
+                                 depend(out:bcast[k-lookahead]) shared(A, B)
                 {
                     // broadcast A(i, k-la) to ranks
                     // owning block row B(i, :)
@@ -285,7 +285,7 @@ void trmm(Side side, scalar_t alpha, TriangularMatrix<scalar_t> A,
             // B(k, :)        = alpha [ A(k, k)       B(k, :) ]  trmm
             #pragma omp task depend(in:bcast[k]) \
                              depend(in:gemm[k+1]) \
-                             depend(out:gemm[k])
+                             depend(out:gemm[k]) shared(A, B)
             {
                 internal::gemm<target>(
                     alpha, A.sub(k+1, mt-1, k, k),
